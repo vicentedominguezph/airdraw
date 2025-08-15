@@ -188,7 +188,8 @@
 handLandmarker = await HandLandmarker.createFromOptions(vision, {
   baseOptions: {
     // usa el archivo local para evitar CORS
-    modelAssetPath: "./hand_landmarker.task?v=6"
+    modelAssetPath: MODEL_URL
+
   },
   runningMode: "VIDEO",
   numHands: 1
@@ -241,6 +242,7 @@ handLandmarker = await HandLandmarker.createFromOptions(vision, {
   </script>
 </body>
 </html>
+
 
 
 
