@@ -176,17 +176,19 @@
       await video.play();
       resizeCanvases();
 
-      const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
-      );
+const vision = await FilesetResolver.forVisionTasks(
+  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
+);
 
-      handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm/hand_landmarker.task"
-        },
-        runningMode: "VIDEO",
-        numHands: 1
-      });
+// Usa el modelo oficial hosteado por MediaPipe (sí existe)
+handLandmarker = await HandLandmarker.createFromOptions(vision, {
+  baseOptions: {
+    modelAssetPath: "https://storage.googleapis.com/mediapipe-assets/hand_landmarker.task"
+  },
+  runningMode: "VIDEO",
+  numHands: 1
+});
+
     }
 
     function toCanvasCoords(lm) {
@@ -233,3 +235,4 @@
   </script>
 </body>
 </html>
+
