@@ -215,9 +215,11 @@ handLandmarker = await HandLandmarker.createFromOptions(vision, {
         const thumb = toCanvasCoords(lm[4]);
         const index = toCanvasCoords(lm[8]);
         const indexBase = toCanvasCoords(lm[5]);
-        const handScale = Math.max(8, dist(indexBase, index));
-        const pinch = dist(index, thumb);
-        const isDrawing = pinch < handScale * 0.45;
+        const handScale = Math.max(12, dist(indexBase, index));   // base un poco mayor
+const pinch = dist(index, thumb);
+const pinchRatio = pinch / handScale;                      // normalizado
+const isDrawing = pinchRatio < 0.65;                       // 0.65–0.75 suele ir bien en laptop
+
 
         const smoothed = smooth(lastPoint, index, 0.4);
         if (isDrawing) drawPoint(smoothed); else lastPoint = smoothed;
@@ -242,6 +244,7 @@ handLandmarker = await HandLandmarker.createFromOptions(vision, {
   </script>
 </body>
 </html>
+
 
 
 
