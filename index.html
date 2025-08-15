@@ -178,7 +178,8 @@
 
   // Versionado para romper caché del CDN
   const VISION_WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm?v=5";
-  const MODEL_URL  = "https://storage.googleapis.com/mediapipe-assets/hand_landmarker.task?v=5";
+  const MODEL_URL  = "./hand_landmarker.task?v=6";
+
 
  const vision = await FilesetResolver.forVisionTasks(
   "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
@@ -240,6 +241,7 @@ handLandmarker = await HandLandmarker.createFromOptions(vision, {
   </script>
 </body>
 </html>
+
 
 
 
