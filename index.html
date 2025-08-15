@@ -170,26 +170,30 @@
       if (e.key.toLowerCase() === "l") { chkLandmarks.checked = !chkLandmarks.checked; }
     });
 
-    async function setup() {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-      video.srcObject = stream;
-      await video.play();
-      resizeCanvases();
+   async function setup() {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+  video.srcObject = stream;
+  await video.play();
+  resizeCanvases();
 
-const vision = await FilesetResolver.forVisionTasks(
-  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
-);
+  // Versionado para romper caché del CDN
+  const VISION_WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm?v=5";
+  const MODEL_URL  = "https://storage.googleapis.com/mediapipe-assets/hand_landmarker.task?v=5";
 
-// Usa el modelo oficial hosteado por MediaPipe (sí existe)
-handLandmarker = await HandLandmarker.createFromOptions(vision, {
-  baseOptions: {
-    modelAssetPath: "https://storage.googleapis.com/mediapipe-assets/hand_landmarker.task"
-  },
-  runningMode: "VIDEO",
-  numHands: 1
-});
+  const vision = await FilesetResolver.forVisionTasks(VISION_WASM);
 
-    }
+  // Verificación explícita: si esto falla, sabremos por qué
+  console.log("Usando modelo:", MODEL_URL);
+  const head = await fetch(MODEL_URL, { method: "HEAD" });
+  if (!head.ok) throw new Error("Modelo no accesible: " + head.status + " " + MODEL_URL);
+
+  handLandmarker = await HandLandmarker.createFromOptions(vision, {
+    baseOptions: { modelAssetPath: MODEL_URL },
+    runningMode: "VIDEO",
+    numHands: 1
+  });
+}
+
 
     function toCanvasCoords(lm) {
       const { w, h } = cssSize(overlay);
@@ -235,4 +239,5 @@ handLandmarker = await HandLandmarker.createFromOptions(vision, {
   </script>
 </body>
 </html>
+
 
