@@ -93,23 +93,30 @@
     const FPS = 30;
     let handLandmarker = null;
 
-    function cssSize(el) {
-      return { w: el.clientWidth, h: el.clientHeight };
-    }
+   function cssSize(el) {
+  const r = el.getBoundingClientRect();
+  return { w: r.width, h: r.height };
+}
 
-    function resizeCanvases() {
-      const w = video.videoWidth || 1280;
-      const h = video.videoHeight || 720;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      for (const c of [paint, overlay]) {
-        c.width = w * dpr;
-        c.height = h * dpr;
-        c.style.width = w + "px";
-        c.style.height = h + "px";
-        const ctx = c.getContext("2d");
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      }
-    }
+
+   function resizeCanvases() {
+  // tamaño visible real del <video> en la página
+  const r = video.getBoundingClientRect();
+  const w = Math.round(r.width);
+  const h = Math.round(r.height);
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  for (const c of [paint, overlay]) {
+    c.width = Math.round(w * dpr);
+    c.height = Math.round(h * dpr);
+    c.style.width = w + "px";
+    c.style.height = h + "px";
+    const ctx = c.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // dibuja en coords CSS
+  }
+}
+
 
     function setColorBtn() {
       colorBtn.style.background = eraser ? "transparent" : COLORS[colorIdx];
@@ -199,10 +206,13 @@ handLandmarker = await HandLandmarker.createFromOptions(vision, {
 }
 
 
-    function toCanvasCoords(lm) {
-  const { w, h } = cssSize(overlay);
-  return { x: lm.x * w, y: lm.y * h };
+   function toCanvasCoords(lm) {
+  const { w, h } = cssSize(overlay);       // tamaño visible del overlay
+  const x = (1 - lm.x) * w;                // espejo porque el <video> está espejado
+  const y = lm.y * h;
+  return { x, y, name: lm.name, categoryName: lm.categoryName };
 }
+
 
 
     async function loop(ts) {
@@ -265,6 +275,7 @@ drawLandmarks(lm.map(toCanvasCoords));
   </script>
 </body>
 </html>
+
 
 
 
