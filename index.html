@@ -37,4 +37,199 @@
         <button id="btnRun">Iniciar</button>
         <button id="btnClear">Limpiar (Space)</button>
         <label>Grosor
-          <input id="thickness" type="range" min="2" max="32" value="6"
+          <input id="thickness" type="range" min="2" max="32" value="6" />
+          <span id="thLbl" class="mono">6</span>
+        </label>
+        <label>Color</label>
+        <button id="colorBtn" class="swatch" title="Cambiar color (C)"></button>
+        <button id="btnEraser">Goma</button>
+        <label>Mano
+          <select id="handed">
+            <option value="any">Cualquiera</option>
+            <option value="left">Izquierda</option>
+            <option value="right">Derecha</option>
+          </select>
+        </label>
+        <div class="spacer"></div>
+        <label><input type="checkbox" id="chkLandmarks" checked /> Landmarks (L)</label>
+      </div>
+
+      <div class="tips">
+        <ul>
+          <li>Junta pulgar e índice para <strong>dibujar</strong>. Separa para dejar de pintar.</li>
+          <li>Atajos: Space = limpiar, C = color, E = goma, L = landmarks.</li>
+          <li>Mejor iluminación frontal = trazos más estables.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8";
+
+    const COLORS = ["#00E5FF","#FF3B30","#34C759","#FFCC00","#5856D6","#FF2D55","#FFFFFF","#111111"];
+    let colorIdx = 0;
+
+    const video = document.getElementById("video");
+    const paint = document.getElementById("paint");
+    const overlay = document.getElementById("overlay");
+    const g = paint.getContext("2d");
+    const og = overlay.getContext("2d");
+
+    const btnRun = document.getElementById("btnRun");
+    const btnClear = document.getElementById("btnClear");
+    const thickness = document.getElementById("thickness");
+    const thLbl = document.getElementById("thLbl");
+    const colorBtn = document.getElementById("colorBtn");
+    const btnEraser = document.getElementById("btnEraser");
+    const handed = document.getElementById("handed");
+    const chkLandmarks = document.getElementById("chkLandmarks");
+
+    let running = false;
+    let eraser = false;
+    let lastPoint = null;
+    let lastTs = 0;
+    const FPS = 30;
+    let handLandmarker = null;
+
+    function cssSize(el) {
+      return { w: el.clientWidth, h: el.clientHeight };
+    }
+
+    function resizeCanvases() {
+      const w = video.videoWidth || 1280;
+      const h = video.videoHeight || 720;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      for (const c of [paint, overlay]) {
+        c.width = w * dpr;
+        c.height = h * dpr;
+        c.style.width = w + "px";
+        c.style.height = h + "px";
+        const ctx = c.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+    }
+
+    function setColorBtn() {
+      colorBtn.style.background = eraser ? "transparent" : COLORS[colorIdx];
+    }
+
+    function clearPaint() {
+      g.clearRect(0, 0, paint.width, paint.height);
+      lastPoint = null;
+    }
+
+    function dist(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function smooth(prev, next, alpha = 0.4) {
+      if (!prev) return next;
+      return { x: prev.x + alpha * (next.x - prev.x), y: prev.y + alpha * (next.y - prev.y) };
+    }
+
+    function drawPoint(p) {
+      if (!lastPoint) lastPoint = p;
+      g.lineCap = "round";
+      g.lineJoin = "round";
+      g.globalCompositeOperation = eraser ? "destination-out" : "source-over";
+      g.strokeStyle = eraser ? "rgba(0,0,0,1)" : COLORS[colorIdx];
+      g.lineWidth = +thickness.value;
+      g.beginPath();
+      g.moveTo(lastPoint.x, lastPoint.y);
+      g.lineTo(p.x, p.y);
+      g.stroke();
+      lastPoint = p;
+    }
+
+    function drawLandmarks(kps) {
+      og.clearRect(0, 0, overlay.width, overlay.height);
+      if (!chkLandmarks.checked) return;
+      og.save();
+      og.fillStyle = "rgba(0,0,0,.6)";
+      og.strokeStyle = "rgba(255,255,255,.9)";
+      og.lineWidth = 2;
+      for (const kp of kps) {
+        og.beginPath();
+        og.arc(kp.x, kp.y, 3, 0, Math.PI * 2);
+        og.fill();
+      }
+      og.restore();
+    }
+
+    btnClear.onclick = clearPaint;
+    thickness.oninput = () => thLbl.textContent = thickness.value;
+    colorBtn.onclick = () => { colorIdx = (colorIdx + 1) % COLORS.length; setColorBtn(); };
+    btnEraser.onclick = () => { eraser = !eraser; btnEraser.textContent = eraser ? "Goma ON" : "Goma"; setColorBtn(); };
+    setColorBtn();
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space") { e.preventDefault(); clearPaint(); }
+      if (e.key.toLowerCase() === "c") { colorBtn.click(); }
+      if (e.key.toLowerCase() === "e") { btnEraser.click(); }
+      if (e.key.toLowerCase() === "l") { chkLandmarks.checked = !chkLandmarks.checked; }
+    });
+
+    async function setup() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+      video.srcObject = stream;
+      await video.play();
+      resizeCanvases();
+
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
+      );
+
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm/hand_landmarker.task"
+        },
+        runningMode: "VIDEO",
+        numHands: 1
+      });
+    }
+
+    function toCanvasCoords(lm) {
+      const { w, h } = cssSize(overlay);
+      return { x: (1 - lm.x) * w, y: lm.y * h };
+    }
+
+    async function loop(ts) {
+      if (!running) return;
+      const minInt = 1000 / FPS;
+      if (ts - lastTs < minInt) { requestAnimationFrame(loop); return; }
+      lastTs = ts;
+
+      const res = handLandmarker.detectForVideo(video, ts);
+      if (res?.landmarks?.length) {
+        const lm = res.landmarks[0];
+        const thumb = toCanvasCoords(lm[4]);
+        const index = toCanvasCoords(lm[8]);
+        const indexBase = toCanvasCoords(lm[5]);
+        const handScale = Math.max(8, dist(indexBase, index));
+        const pinch = dist(index, thumb);
+        const isDrawing = pinch < handScale * 0.45;
+
+        const smoothed = smooth(lastPoint, index, 0.4);
+        if (isDrawing) drawPoint(smoothed); else lastPoint = smoothed;
+
+        drawLandmarks(lm.map(toCanvasCoords));
+      } else {
+        lastPoint = null;
+        og.clearRect(0, 0, overlay.width, overlay.height);
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    btnRun.onclick = async () => {
+      if (!handLandmarker) await setup();
+      running = !running;
+      btnRun.textContent = running ? "Detener" : "Iniciar";
+      if (running) requestAnimationFrame(loop);
+    };
+
+    window.addEventListener("resize", resizeCanvases);
+  </script>
+</body>
+</html>
