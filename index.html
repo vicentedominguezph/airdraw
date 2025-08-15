@@ -221,8 +221,8 @@ const pinch      = dist(index, thumb);
 const pinchRatio = pinch / handScale;
 
 // Histeresis: entra a dibujar con 0.75, sale con 0.85
-const ON_T  = 0.75;
-const OFF_T = 0.85;
+const ON_T  = 0.85;
+const OFF_T = 0.95;
 window.__drawing = window.__drawing ?? false;
 if (!window.__drawing && pinchRatio < ON_T)  window.__drawing = true;
 if ( window.__drawing && pinchRatio > OFF_T) window.__drawing = false;
@@ -263,6 +263,7 @@ drawLandmarks(lm.map(toCanvasCoords));
   </script>
 </body>
 </html>
+
 
 
 
