@@ -200,9 +200,10 @@ handLandmarker = await HandLandmarker.createFromOptions(vision, {
 
 
     function toCanvasCoords(lm) {
-      const { w, h } = cssSize(overlay);
-      return { x: (1 - lm.x) * w, y: lm.y * h };
-    }
+  const { w, h } = cssSize(overlay);
+  return { x: lm.x * w, y: lm.y * h };
+}
+
 
     async function loop(ts) {
       if (!running) return;
@@ -264,6 +265,7 @@ drawLandmarks(lm.map(toCanvasCoords));
   </script>
 </body>
 </html>
+
 
 
 
