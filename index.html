@@ -215,16 +215,35 @@ handLandmarker = await HandLandmarker.createFromOptions(vision, {
         const thumb = toCanvasCoords(lm[4]);
         const index = toCanvasCoords(lm[8]);
         const indexBase = toCanvasCoords(lm[5]);
-        const handScale = Math.max(12, dist(indexBase, index));   // base un poco mayor
-const pinch = dist(index, thumb);
-const pinchRatio = pinch / handScale;                      // normalizado
-const isDrawing = pinchRatio < 0.65;                       // 0.65–0.75 suele ir bien en laptop
+        // Tamaño de referencia de la mano y pinza normalizada
+const handScale  = Math.max(12, dist(indexBase, index));
+const pinch      = dist(index, thumb);
+const pinchRatio = pinch / handScale;
 
+// Histeresis: entra a dibujar con 0.75, sale con 0.85
+const ON_T  = 0.75;
+const OFF_T = 0.85;
+window.__drawing = window.__drawing ?? false;
+if (!window.__drawing && pinchRatio < ON_T)  window.__drawing = true;
+if ( window.__drawing && pinchRatio > OFF_T) window.__drawing = false;
 
-        const smoothed = smooth(lastPoint, index, 0.4);
-        if (isDrawing) drawPoint(smoothed); else lastPoint = smoothed;
+const isDrawing = window.__drawing;
 
-        drawLandmarks(lm.map(toCanvasCoords));
+// Trazo suavizado
+const smoothed = smooth(lastPoint, index, 0.4);
+if (isDrawing) drawPoint(smoothed); else lastPoint = smoothed;
+
+// LED de estado (arriba a la izquierda): verde si dibuja, rojo si no
+og.save();
+og.beginPath();
+og.arc(16, 16, 6, 0, Math.PI * 2);
+og.fillStyle = isDrawing ? "#2ecc71" : "#e74c3c";
+og.fill();
+og.restore();
+
+// Landmarks
+drawLandmarks(lm.map(toCanvasCoords));
+
       } else {
         lastPoint = null;
         og.clearRect(0, 0, overlay.width, overlay.height);
@@ -244,6 +263,7 @@ const isDrawing = pinchRatio < 0.65;                       // 0.65–0.75 suele 
   </script>
 </body>
 </html>
+
 
 
 
